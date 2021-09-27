@@ -1,14 +1,18 @@
 package green
 
 import (
+	"bufio"
 	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"strings"
 )
 
 var tagParseRegExp = regexp.MustCompile(`,\s*default=(?P<default>\w+)`)
+
+const envFileLineFormat = `\w+=\w+`
 
 type FieldTag struct {
 	Required bool
@@ -23,6 +27,37 @@ func parseTag(tag string) (ft FieldTag) {
 	if len(defaults) > 1 {
 		ft.Default = defaults[1]
 	}
+	return
+}
+
+/*
+loadEnvFile reads `filename` into a map by parsing each line
+represented with the `key=val` syntax.
+*/
+func loadEnvFile(filename string) (env map[string]string) {
+	env = make(map[string]string)
+	varLines, err := os.ReadFile(filename)
+	if err != nil {
+		return
+	}
+
+	s := bufio.NewScanner(strings.NewReader(string(varLines)))
+	s.Split(bufio.ScanWords)
+	for s.Scan() {
+		line := s.Text()
+		if strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		if isKeyVal, _ := regexp.MatchString(line, envFileLineFormat); !isKeyVal {
+			continue
+		}
+
+		keyVal := strings.Split(line, "=")
+		name, val := keyVal[0], keyVal[1]
+		env[name] = val
+	}
+
 	return
 }
 
@@ -43,6 +78,15 @@ fmt.Printf("Foo = %s", env["Foo"])
 */
 func LoadEnv(env interface{}) (results map[string]string) {
 	results = make(map[string]string)
+
+	wd, err := os.Getwd()
+	if err != nil {
+		return
+	} else {
+		filename := filepath.Join(wd, ".env")
+		results = loadEnvFile(filename)
+	}
+
 	val := reflect.ValueOf(env)
 	ifc := reflect.Indirect(val)
 
