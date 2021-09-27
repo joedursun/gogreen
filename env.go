@@ -2,6 +2,7 @@ package green
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,8 +12,7 @@ import (
 )
 
 var tagParseRegExp = regexp.MustCompile(`,\s*default=(?P<default>\w+)`)
-
-const envFileLineFormat = `\w+=\w+`
+var envFileLineFormat = regexp.MustCompile(`\w+=\w+`)
 
 type FieldTag struct {
 	Required bool
@@ -32,30 +32,31 @@ func parseTag(tag string) (ft FieldTag) {
 
 /*
 loadEnvFile reads `filename` into a map by parsing each line
-represented with the `key=val` syntax.
+represented with the `key=val` syntax. Lines starting with `#`
+are treated as comments, but if `#` appears after the first character
 */
-func loadEnvFile(filename string) (env map[string]string) {
+func LoadEnvFile(filename string) (env map[string]string) {
 	env = make(map[string]string)
-	varLines, err := os.ReadFile(filename)
+	file, err := os.Open(filename)
 	if err != nil {
 		return
 	}
+	defer file.Close()
 
-	s := bufio.NewScanner(strings.NewReader(string(varLines)))
-	s.Split(bufio.ScanWords)
+	s := bufio.NewScanner(file)
 	for s.Scan() {
-		line := s.Text()
-		if strings.HasPrefix(line, "#") {
+		line := bytes.TrimSpace(s.Bytes())
+		if bytes.HasPrefix(line, []byte("#")) {
 			continue
 		}
 
-		if isKeyVal, _ := regexp.MatchString(line, envFileLineFormat); !isKeyVal {
+		if isKeyVal := envFileLineFormat.Match(line); !isKeyVal {
 			continue
 		}
 
-		keyVal := strings.Split(line, "=")
+		keyVal := bytes.Split(line, []byte("="))
 		name, val := keyVal[0], keyVal[1]
-		env[name] = val
+		env[string(name)] = string(val)
 	}
 
 	return
@@ -84,7 +85,7 @@ func LoadEnv(env interface{}) (results map[string]string) {
 		return
 	} else {
 		filename := filepath.Join(wd, ".env")
-		results = loadEnvFile(filename)
+		results = LoadEnvFile(filename)
 	}
 
 	val := reflect.ValueOf(env)
