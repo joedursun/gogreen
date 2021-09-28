@@ -1,5 +1,9 @@
 # GoGreen
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/joedursun/gogreen)](https://goreportcard.com/report/github.com/joedursun/gogreen)
+[![PkgGoDev](https://pkg.go.dev/badge/github.com/joedursun/gogreen)](https://pkg.go.dev/github.com/joedursun/gogreen)
+[![Build Status](https://travis-ci.org/joedursun/gogreen.svg?branch=main)](https://travis-ci.org/joedursun/gogreen)
+
 Keep your environment green! The green package provides a way to add runtime checks for your environment variables (AKA env vars). Its purpose is to provide guarantees around environment variable values and to help standardize configuration via env vars. If a struct field is marked as `required` then if it is not found in either the environment or the `.env` file `green.LoadEnv` will panic.
 
 Features:
