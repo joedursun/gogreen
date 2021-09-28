@@ -3,9 +3,9 @@ package green
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"reflect"
 	"regexp"
 	"strings"
@@ -14,15 +14,22 @@ import (
 var tagParseRegExp = regexp.MustCompile(`,\s*default=(?P<default>\w+)`)
 var envFileLineFormat = regexp.MustCompile(`\w+=\w+`)
 
-type FieldTag struct {
-	Required bool
-	Name     string
-	Default  string
+type Environment interface {
+	EnvFileLocation() string
 }
 
-func parseTag(tag string) (ft FieldTag) {
+type FieldTag struct {
+	Required   bool
+	EnvVarName string
+	FieldName  string
+	Default    string
+}
+
+func parseTag(field reflect.StructField) (ft FieldTag) {
+	tag := field.Tag.Get("green")
+	ft.FieldName = field.Name
 	ft.Required, _ = regexp.MatchString("required", tag)
-	ft.Name = strings.Split(tag, ",")[0]
+	ft.EnvVarName = strings.Split(tag, ",")[0]
 	defaults := tagParseRegExp.FindStringSubmatch(tag)
 	if len(defaults) > 1 {
 		ft.Default = defaults[1]
@@ -62,6 +69,13 @@ func LoadEnvFile(filename string) (env map[string]string) {
 	return
 }
 
+func getStructFields(env Environment) []reflect.StructField {
+	val := reflect.ValueOf(env)
+	ifc := reflect.Indirect(val)
+
+	return reflect.VisibleFields(ifc.Type())
+}
+
 /*
 LoadEnv accepts a struct with the `green` field tag defined
 for its fields and returns a map of environment variables with
@@ -77,29 +91,19 @@ type MyEnv struct {
 env := green.LoadEnv(MyEnv{})
 fmt.Printf("Foo = %s", env["Foo"])
 */
-func LoadEnv(env interface{}) (results map[string]string) {
-	results = make(map[string]string)
+func LoadEnv(env Environment) (results map[string]string) {
+	results = LoadEnvFile(env.EnvFileLocation())
+	fields := getStructFields(env)
 
-	wd, err := os.Getwd()
-	if err != nil {
-		return
-	} else {
-		filename := filepath.Join(wd, ".env")
-		results = LoadEnvFile(filename)
-	}
-
-	val := reflect.ValueOf(env)
-	ifc := reflect.Indirect(val)
-
-	for _, field := range reflect.VisibleFields(ifc.Type()) {
-		ft := parseTag(field.Tag.Get("green"))
-		val := os.Getenv(ft.Name)
+	for _, field := range fields {
+		ft := parseTag(field)
+		val := os.Getenv(ft.EnvVarName)
 
 		if len(val) == 0 {
 			if ft.Required {
-				panic(fmt.Sprintf("%s not found in environment", ft.Name))
+				panic(fmt.Sprintf("%s not found in environment", ft.EnvVarName))
 			} else if ft.Default != "" {
-				results[ft.Name] = ft.Default
+				results[ft.EnvVarName] = ft.Default
 			}
 		}
 	}
@@ -112,6 +116,31 @@ UnmarshalENV accepts a struct with the `green` field tag defined
 for its fields and assigns values from the environment or the defaults
 to `env`.
 */
-// func UnmarshalENV(env interface{}) (err error) {
-// 	return
-// }
+func UnmarshalENV(env Environment) (err error) {
+	envStruct := reflect.ValueOf(env).Elem()
+	if !envStruct.CanAddr() {
+		return errors.New("argument not addressable")
+	}
+
+	values := LoadEnv(env)
+	fields := getStructFields(env)
+
+	for _, field := range fields {
+		if field.Type.String() != "string" {
+			// os.Getenv() always returns a string so we leave conversion to other
+			// data types to the caller. Any field whose type isn't a string
+			// will be skipped.
+			continue
+		}
+
+		ft := parseTag(field)
+		val, found := values[ft.EnvVarName]
+		if !found {
+			continue
+		}
+
+		fieldVal := envStruct.FieldByName(ft.FieldName)
+		fieldVal.Set(reflect.ValueOf(val))
+	}
+	return
+}

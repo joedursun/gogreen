@@ -15,6 +15,10 @@ type TestEnv struct {
 	unexportedField string
 }
 
+func (e TestEnv) EnvFileLocation() string {
+	return ""
+}
+
 func testPanicString(t *testing.T, expected string) {
 	if r := recover(); r != nil {
 		if r != expected {
@@ -69,5 +73,37 @@ func TestLoadEnvFile(t *testing.T) {
 		if expectedVal != val {
 			t.Errorf("Expected %s but got %s", expectedVal, val)
 		}
+	}
+}
+
+type TestUnmarshalEnv struct {
+	Foo             string `green:"FOO,default=foo"`
+	Username        string `green:"USERNAME,default=guestDefault"`
+	EmptyVal        string `green:"EMPTY_VAL"`
+	SomeInt         int    `green:"SOME_INT"`
+	unexportedField string
+}
+
+func (e TestUnmarshalEnv) EnvFileLocation() string {
+	return "./env.example"
+}
+
+func TestUnmarshalENV(t *testing.T) {
+	te := TestUnmarshalEnv{}
+	err := green.UnmarshalENV(&te)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if te.Username != "guestDefault" {
+		t.Errorf("Expected Username = 'guestDefault' but got '%s'", te.Username)
+	}
+
+	if te.Foo != "foo" {
+		t.Errorf("Expected Foo = 'foo' but got '%s'", te.Foo)
+	}
+
+	if te.SomeInt != 0 {
+		t.Errorf("Expected SomeInt = 0 but got '%d'", te.SomeInt)
 	}
 }
