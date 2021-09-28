@@ -1,3 +1,3 @@
-module github.com/joedursun/green
+module github.com/joedursun/gogreen
 
 go 1.17

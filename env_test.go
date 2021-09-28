@@ -1,4 +1,4 @@
-package green_test
+package gogreen_test
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/joedursun/green"
+	"github.com/joedursun/gogreen"
 )
 
 type TestRequiredEnv struct {
@@ -48,7 +48,7 @@ func TestLoadEnv(t *testing.T) {
 	}
 
 	tenv := TestEnv{}
-	res := green.LoadEnv(tenv)
+	res := gogreen.LoadEnv(tenv)
 
 	for _, tt := range tests {
 		actual := res[tt.varName]
@@ -61,7 +61,7 @@ func TestLoadEnv(t *testing.T) {
 	defer testPanicString(t, "GREEN_TEST_HOSTNAME not found in environment")
 
 	env := TestRequiredEnv{}
-	green.LoadEnv(env) // this should panic and be caught by the deferred test condition
+	gogreen.LoadEnv(env) // this should panic and be caught by the deferred test condition
 }
 
 func TestLoadEnvFile(t *testing.T) {
@@ -78,7 +78,7 @@ func TestLoadEnvFile(t *testing.T) {
 	}
 
 	filename := filepath.Join(wd, ".env.example")
-	res := green.LoadEnvFile(filename)
+	res := gogreen.LoadEnvFile(filename)
 	for key, val := range res {
 		expectedVal, found := expected[key]
 
@@ -109,7 +109,7 @@ func (e TestUnmarshalEnv) EnvFileLocation() string {
 func TestUnmarshalENV(t *testing.T) {
 	os.Setenv("GREEN_REQUIRED_FIELD", "required_value")
 	te := TestUnmarshalEnv{}
-	err := green.UnmarshalENV(&te)
+	err := gogreen.UnmarshalENV(&te)
 	if err != nil {
 		t.Error(err)
 	}
@@ -135,12 +135,12 @@ func TestUnmarshalENV(t *testing.T) {
 }
 
 func TestUnmarshalENVBadInput(t *testing.T) {
-	err := green.UnmarshalENV(TestUnmarshalEnv{})
+	err := gogreen.UnmarshalENV(TestUnmarshalEnv{})
 	if err == nil {
 		t.Error("expected to receive error from UnmarshalENV")
 	}
 
-	if err.Error() != "must provide pointer to struct but given green_test.TestUnmarshalEnv" {
+	if err.Error() != "must provide pointer to struct but given gogreen_test.TestUnmarshalEnv" {
 		t.Errorf("received unexpected error message: '%s'", err.Error())
 	}
 }
@@ -165,7 +165,7 @@ func ExampleUnmarshalENV() {
 	*/
 	os.Setenv("GREENTEST_HOSTNAME", "localhost")
 	env := ExampleEnv{}
-	green.UnmarshalENV(&env)
+	gogreen.UnmarshalENV(&env)
 
 	fmt.Printf("Token: %s\n", env.Token)
 	fmt.Printf("Username: %s\n", env.Username)

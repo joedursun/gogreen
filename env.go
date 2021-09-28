@@ -1,4 +1,4 @@
-package green
+package gogreen
 
 import (
 	"bufio"
