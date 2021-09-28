@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-var tagParseRegExp = regexp.MustCompile(`,\s*default=(?P<default>\w+)`)
+var tagParseRegExp = regexp.MustCompile(`,\s*default=(?P<default>[\w!@#$%^&*()]+)`)
 var envFileLineFormat = regexp.MustCompile(`\w+=\w+`)
 
 type Environment interface {
@@ -27,6 +27,10 @@ type FieldTag struct {
 
 func parseTag(field reflect.StructField) (ft FieldTag) {
 	tag := field.Tag.Get("green")
+	if tag == "" {
+		return
+	}
+
 	ft.FieldName = field.Name
 	ft.Required, _ = regexp.MatchString("required", tag)
 	ft.EnvVarName = strings.Split(tag, ",")[0]
@@ -81,15 +85,6 @@ LoadEnv accepts a struct with the `green` field tag defined
 for its fields and returns a map of environment variables with
 defaults if specified. If a field is marked as required but
 not found in the environment then LoadEnv panics.
-
-Example struct tag usage:
-type MyEnv struct {
-	Foo string `green:"FOO,default=myFooDefault"`
-	Bar string `green:"BAR,required"`
-}
-
-env := green.LoadEnv(MyEnv{})
-fmt.Printf("Foo = %s", env["Foo"])
 */
 func LoadEnv(env Environment) (results map[string]string) {
 	results = LoadEnvFile(env.EnvFileLocation())
@@ -105,7 +100,9 @@ func LoadEnv(env Environment) (results map[string]string) {
 			} else if ft.Default != "" {
 				results[ft.EnvVarName] = ft.Default
 			}
+			continue
 		}
+		results[ft.EnvVarName] = val
 	}
 
 	return
@@ -115,8 +112,18 @@ func LoadEnv(env Environment) (results map[string]string) {
 UnmarshalENV accepts a struct with the `green` field tag defined
 for its fields and assigns values from the environment or the defaults
 to `env`.
+Since os.Getenv() always returns a string we leave conversion to other
+data types up to the caller. Any field whose type isn't a string
+will be skipped as will any field that doesn't have a `green` struct tag.
 */
 func UnmarshalENV(env Environment) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			envType := reflect.TypeOf(env).String()
+			err = fmt.Errorf("must provide pointer to struct but given %s", envType)
+		}
+	}()
+
 	envStruct := reflect.ValueOf(env).Elem()
 	if !envStruct.CanAddr() {
 		return errors.New("argument not addressable")
@@ -127,9 +134,6 @@ func UnmarshalENV(env Environment) (err error) {
 
 	for _, field := range fields {
 		if field.Type.String() != "string" {
-			// os.Getenv() always returns a string so we leave conversion to other
-			// data types to the caller. Any field whose type isn't a string
-			// will be skipped.
 			continue
 		}
 
