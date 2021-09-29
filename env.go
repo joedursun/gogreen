@@ -12,7 +12,7 @@ import (
 )
 
 var tagParseRegExp = regexp.MustCompile(`,\s*default=(?P<default>[\w!@#$%^&*()]+)`)
-var envFileLineFormat = regexp.MustCompile(`\w+=\w+`)
+var envFileLineFormat = regexp.MustCompile(`\w+=[\w!@#$%^&*()]+`)
 
 type Environment interface {
 	EnvFileLocation() string

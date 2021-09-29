@@ -65,11 +65,14 @@ func TestLoadEnv(t *testing.T) {
 }
 
 func TestLoadEnvFile(t *testing.T) {
-	expected := map[string]string{
-		"FOO":      "bar",
-		"USERNAME": "guest",
-		"TOKEN":    "abc$@H9876;",
-		"Hello":    "World!",
+	tests := []struct {
+		VarName     string
+		ExpectedVal string
+	}{
+		{"FOO", "bar"},
+		{"USERNAME", "guest"},
+		{"TOKEN", "#abc$@H9876;"},
+		{"Hello", "World!"},
 	}
 
 	wd, err := os.Getwd()
@@ -79,16 +82,10 @@ func TestLoadEnvFile(t *testing.T) {
 
 	filename := filepath.Join(wd, ".env.example")
 	res := gogreen.LoadEnvFile(filename)
-	for key, val := range res {
-		expectedVal, found := expected[key]
 
-		if !found {
-			t.Errorf("Expected key %s to be present", key)
-			continue
-		}
-
-		if expectedVal != val {
-			t.Errorf("Expected %s but got %s", expectedVal, val)
+	for _, tt := range tests {
+		if res[tt.VarName] != tt.ExpectedVal {
+			t.Errorf("expected %s but got %s", tt.ExpectedVal, res[tt.VarName])
 		}
 	}
 }
