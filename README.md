@@ -15,6 +15,10 @@ Order of precedence:
   1. environment variables
   2. .env file variables
 
+### Motivation
+
+Many apps load some portion of their configuration from environment variables and often have sprawling logic to check for their presence and provide defaults. By centralizing environment lookup and validation we get a single struct that guarantees all necessary variables are accounted for and can be tested against.
+
 
 
 ## Example Usage
