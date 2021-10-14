@@ -46,7 +46,7 @@ loadEnvFile reads `filename` into a map by parsing each line
 represented with the `key=val` syntax. Lines starting with `#`
 are treated as comments, but if `#` appears after the first character
 */
-func LoadEnvFile(filename string) (env map[string]string) {
+func LoadEnvFile(filename string) (env map[string]string, err error) {
 	env = make(map[string]string)
 	file, err := os.Open(filename)
 	if err != nil {
@@ -87,7 +87,7 @@ defaults if specified. If a field is marked as required but
 not found in the environment then LoadEnv panics.
 */
 func LoadEnv(env Environment) (results map[string]string) {
-	results = LoadEnvFile(env.EnvFileLocation())
+	results, _ = LoadEnvFile(env.EnvFileLocation())
 	fields := getStructFields(env)
 
 	for _, field := range fields {

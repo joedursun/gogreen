@@ -81,7 +81,10 @@ func TestLoadEnvFile(t *testing.T) {
 	}
 
 	filename := filepath.Join(wd, ".env.example")
-	res := gogreen.LoadEnvFile(filename)
+	res, err := gogreen.LoadEnvFile(filename)
+	if err != nil {
+		t.Error("Unable to read env file: ", err)
+	}
 
 	for _, tt := range tests {
 		if res[tt.VarName] != tt.ExpectedVal {
